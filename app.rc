@@ -1,0 +1,3 @@
+// 资源 ID 1 = 应用图标：Explorer 取最小 ID 图标作 exe 文件图标；
+// Host::createWindow 用 MAKEINTRESOURCE(1) 取同一图标设标题栏。
+1 ICON "ImageEditor.ico"
