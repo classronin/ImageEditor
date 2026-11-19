@@ -29,7 +29,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 #   laf：随仓库源码编译，Skia 后端
 # ---------------------------------------------------------------------------
 set(VCPKG_STATIC "E:/Programs/vcpkg/installed/x64-windows-static" CACHE PATH "vcpkg 静态 triplet 安装目录")
-set(VIPS_LOCAL "E:/lib/ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
+set(VIPS_LOCAL "E:/lib/libvips-ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
 set(SKIA_DIR "E:/lib/Skia/Skia-Windows-Release-x64" CACHE PATH "" FORCE)
 set(LAF_DIR "E:/source/laf" CACHE PATH "laf 源码目录")
 set(EIGEN_DIR "E:/source/eigen" CACHE PATH "eigen 头文件目录")
@@ -170,6 +170,17 @@ target_compile_definitions(ImageEditor PRIVATE
     _CRT_SECURE_NO_WARNINGS
     HWY_STATIC_DEFINE
 )
+
+# ---------------------------------------------------------------------------
+# 自检夹具：main.cpp 的 ICC 断言读取 exe 同目录的 icc_test_cmyk.jpg。
+# 权威副本放在 tools/fixtures，构建后自动复制到输出目录；
+# 清理 bin 目录之后自检不再因为"缺图"断掉（见 ronin/职责边界.md 第九节）。
+# ---------------------------------------------------------------------------
+add_custom_command(TARGET ImageEditor POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/fixtures/icc_test_cmyk.jpg"
+            "$<TARGET_FILE_DIR:ImageEditor>/icc_test_cmyk.jpg"
+    COMMENT "复制自检夹具 icc_test_cmyk.jpg")
 
 # A/B 对拍工具：走与主程序完全相同的 imageio 路径
 add_executable(abconv tools/abconv.cpp src/core/ImageIo.cpp src/core/Image.cpp)

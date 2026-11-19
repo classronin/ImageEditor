@@ -1,0 +1,2 @@
+T-057	done	agent8	none	Delete语义收敛到Editor::deleteByKey(有选区清内容/无选区删图层)；面板只发Cmd::Delete；Ctrl+A/Z覆盖文本会话与输入框；图层面板Shift区间多选	1111T0303
+T-061	done	main	GUI 验收：文本/输入框 Ctrl+C/X/V、字号读数随拖刷新、浮动面板右/下/角三边缩放、工具浮层工具标题与双击语义；输入法落点待 IE_IME_TRACE 日志判定	build_ronin\t061_build.log exit0；selftest 216 ok / 0 fail	1111T0448
