@@ -22,10 +22,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 # ---------------------------------------------------------------------------
 # 依赖定位（全部静态库，产物不依赖任何第三方 DLL）
-#   libvips / glib：vcpkg x64-windows-static（编解码唯一实现）
+#   libvips：冻结在本项目私有的 E:\lib\ImageEditor（只放 vips.lib + vips 头文件）
+#     别的项目重装或改特性的 vcpkg libvips 影响不到本项目
+#   其余依赖（glib/jpeg/png/webp/tiff/lcms/opencv/hwy）：取自 vcpkg x64-windows-static，
+#     这些库不随 libvips 变动，无需冻结
 #   laf：随仓库源码编译，Skia 后端
 # ---------------------------------------------------------------------------
 set(VCPKG_STATIC "E:/Programs/vcpkg/installed/x64-windows-static" CACHE PATH "vcpkg 静态 triplet 安装目录")
+set(VIPS_LOCAL "E:/lib/ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
 set(SKIA_DIR "E:/lib/Skia/Skia-Windows-Release-x64" CACHE PATH "" FORCE)
 set(LAF_DIR "E:/source/laf" CACHE PATH "laf 源码目录")
 set(EIGEN_DIR "E:/source/eigen" CACHE PATH "eigen 头文件目录")
@@ -39,7 +43,7 @@ list(APPEND CMAKE_PREFIX_PATH "${VCPKG_STATIC}")
 # 而 vcpkg 把这份库命名成 deflatestatic.lib；仓库内给一个同名副本，链接器才找得到）。
 set(VIPS_SHIM_DIR "${CMAKE_SOURCE_DIR}/cmake/vips-shim")
 set(VIPS_LIBS
-    "${VCPKG_STATIC}/lib/vips.lib"
+    "${VIPS_LOCAL}/lib/vips.lib"
     "${VCPKG_STATIC}/lib/glib-2.0.lib"
     "${VCPKG_STATIC}/lib/gobject-2.0.lib"
     "${VCPKG_STATIC}/lib/gio-2.0.lib"
@@ -146,6 +150,7 @@ target_include_directories(ImageEditor PRIVATE src
     "${SKIA_DIR}/third_party/externals/freetype/include"
     "${VCPKG_STATIC}/include/opencv4"
     "${EIGEN_DIR}"
+    "${VIPS_LOCAL}/include"
     "${VCPKG_STATIC}/include"
     "${VCPKG_STATIC}/include/glib-2.0"
     "${VCPKG_STATIC}/lib/glib-2.0/include")
@@ -169,6 +174,7 @@ target_compile_definitions(ImageEditor PRIVATE
 # A/B 对拍工具：走与主程序完全相同的 imageio 路径
 add_executable(abconv tools/abconv.cpp src/core/ImageIo.cpp src/core/Image.cpp)
 target_include_directories(abconv PRIVATE src
+    "${VIPS_LOCAL}/include"
     "${VCPKG_STATIC}/include"
     "${VCPKG_STATIC}/include/glib-2.0"
     "${VCPKG_STATIC}/lib/glib-2.0/include")

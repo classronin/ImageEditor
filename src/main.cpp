@@ -49,6 +49,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <shellapi.h>
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
 #endif
@@ -68,12 +69,53 @@ void check(bool ok, const char* what)
     if (!ok) ++g_failures;
 }
 
+struct LaunchArgs {
+    bool selftest = false;
+    bool bench = false;
+    std::vector<std::string> paths;
+};
+
+LaunchArgs parseLaunchArgs(const std::vector<std::string>& args)
+{
+    LaunchArgs out;
+    for (size_t i = 1; i < args.size(); ++i) {
+        const std::string& a = args[i];
+        if (a == "--selftest") { out.selftest = true; continue; }
+        if (a == "--bench") { out.bench = true; continue; }
+        if (a == "--open" && i + 1 < args.size()) {
+            const std::string& v = args[++i];
+            std::string::size_type b = 0;
+            while (b < v.size()) {
+                const std::string::size_type e = v.find(';', b);
+                const std::string one = v.substr(b, e == std::string::npos ? std::string::npos : e - b);
+                if (!one.empty()) out.paths.push_back(one);
+                if (e == std::string::npos) break;
+                b = e + 1;
+            }
+            continue;
+        }
+        if (!a.empty() && a[0] != '-') out.paths.push_back(a);
+    }
+    return out;
+}
+
 int runSelfTest()
 {
     using namespace ie;
 
     const float kImgRowY0 = (float)(30 + 28 + 6) + (float)(30 - 6) / 2.0f;
     const float kImgRowY1 = kImgRowY0 + 30.0f;
+
+    {
+        const LaunchArgs la1 = parseLaunchArgs({"ImageEditor.exe", "C:\\pics\\a.png"});
+        check(!la1.selftest && la1.paths.size() == 1 && la1.paths[0] == "C:\\pics\\a.png",
+              "launch: 裸路径参数（右键打开方式）当文件打开");
+        const LaunchArgs la2 = parseLaunchArgs({"ImageEditor.exe", "--open", "a.png;b.png"});
+        check(la2.paths.size() == 2 && la2.paths[0] == "a.png" && la2.paths[1] == "b.png",
+              "launch: --open 分号分隔多文件");
+        const LaunchArgs la3 = parseLaunchArgs({"ImageEditor.exe", "--selftest"});
+        check(la3.selftest && la3.paths.empty(), "launch: --selftest 不当路径");
+    }
 
     {
         Document doc;
@@ -7936,18 +7978,45 @@ LONG WINAPI ieCrashLog(EXCEPTION_POINTERS* ep)
 }
 #endif
 
+#ifdef _WIN32
+std::string winArgToUtf8(const wchar_t* w)
+{
+    if (!w || !*w) return std::string();
+    const int n = ::WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
+    if (n <= 0) return std::string();
+    std::string s((size_t)n, '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, w, -1, s.data(), n, nullptr, nullptr);
+    s.resize((size_t)(n - 1));
+    return s;
+}
+#endif
+
+std::vector<std::string> collectArgs(int argc, char** argv)
+{
+#ifdef _WIN32
+    std::vector<std::string> out;
+    int n = 0;
+    LPWSTR* wv = ::CommandLineToArgvW(::GetCommandLineW(), &n);
+    if (wv) {
+        for (int i = 0; i < n; ++i) out.push_back(winArgToUtf8(wv[i]));
+        ::LocalFree(wv);
+    }
+    if (out.empty()) {
+        for (int i = 0; i < argc; ++i) out.push_back(argv[i] ? argv[i] : "");
+    }
+    return out;
+#else
+    std::vector<std::string> out;
+    for (int i = 0; i < argc; ++i) out.push_back(argv[i] ? argv[i] : "");
+    return out;
+#endif
+}
+
 int runApp(int argc, char** argv)
 {
-    bool selftest = false;
-    bool bench = false;
-    std::string openPath;
-
-    for (int i = 1; i < argc; ++i) {
-        const std::string a = argv[i];
-        if (a == "--selftest") selftest = true;
-        else if (a == "--bench") bench = true;
-        else if (a == "--open" && i + 1 < argc) openPath = argv[++i];
-    }
+    const LaunchArgs la = parseLaunchArgs(collectArgs(argc, argv));
+    const bool selftest = la.selftest;
+    const bool bench = la.bench;
 
     if (selftest) {
         if (std::freopen("selftest.log", "w", stdout) == nullptr) return 2;
@@ -7979,15 +8048,7 @@ int runApp(int argc, char** argv)
             return 1;
         }
 
-        std::string::size_type beg = 0;
-        while (beg < openPath.size()) {
-            const std::string::size_type end = openPath.find(';', beg);
-            const std::string one =
-                openPath.substr(beg, end == std::string::npos ? std::string::npos : end - beg);
-            if (!one.empty()) host.openFile(one);
-            if (end == std::string::npos) break;
-            beg = end + 1;
-        }
+        for (const std::string& p : la.paths) host.openFile(p);
 
         host.run();
     } catch (const std::exception& e) {
