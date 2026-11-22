@@ -1242,8 +1242,9 @@ private:
     {
         const size_t sep = name_.find_last_of("\\/");
         const size_t dot = name_.find_last_of('.');
-        if (dot == std::string::npos) return;
+        if (dot == std::string::npos || dot == 0) return;
         if (sep != std::string::npos && dot < sep) return;
+        if (!ie::isSaveExtSuffix(name_.substr(dot + 1))) return;
         name_ = name_.substr(0, dot) + ie::saveExtFor(type_);
     }
 

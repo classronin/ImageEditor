@@ -5562,6 +5562,12 @@ int runSelfTest()
               "savepath: 空目录用 . 并补扩展");
         check(composeSavePath(dir + "\\", "b", ".webp") == "C:\\用户\\图片\\b.webp",
               "savepath: 目录已带尾分隔不重复加");
+        check(composeSavePath(dir, "v1.2", ".png") == "C:\\用户\\图片\\v1.2.png",
+              "savepath: 点号不是扩展名(1.2) → 照常补后缀，别存成无扩展名");
+        check(composeSavePath(dir, "img.webp.png", ".png") == "C:\\用户\\图片\\img.webp.png",
+              "savepath: 双后缀 img.webp.png 原样保留，不重复补");
+        check(composeSavePath(dir, "img.webp", ".png") == "C:\\用户\\图片\\img.webp",
+              "savepath: 手写合法图片后缀优先于格式下拉");
 
         check(dirNameOf("C:\\用户\\图片\\无标题.png") == "C:\\用户\\图片",
               "dirname: 取中文来源目录");
@@ -5574,7 +5580,8 @@ int runSelfTest()
     }
 
     {
-        const std::vector<std::string> have = {"C:\\d\\x.png", "C:\\d\\x-1.png"};
+        const std::vector<std::string> have = {"C:\\d\\x.png", "C:\\d\\x-1.png",
+                                               "C:\\d\\img.webp.png"};
         auto ex = [&](const std::string& p) { return std::find(have.begin(), have.end(), p) != have.end(); };
         check(uniquePathName("C:\\d", "x", ".png", ex) == "C:\\d\\x-2.png",
               "unique: 已存 x,x-1 → x-2");
@@ -5584,6 +5591,8 @@ int runSelfTest()
               "unique: 去叠尾号 x-1 → x-2 而非 x-1-1");
         check(uniquePathName("C:\\d", "报告", ".webp", ex) == "C:\\d\\报告.webp",
               "unique: 中文名不冲突原样(UTF-8 字节)");
+        check(uniquePathName("C:\\d", "img.webp.png", ".png", ex) == "C:\\d\\img.webp-1.png",
+              "unique: 撞名 img.webp.png → img.webp-1.png(改名后仍带合法扩展名)");
     }
 
     {

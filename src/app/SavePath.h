@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <functional>
 #include <string>
 
@@ -15,6 +16,23 @@ inline std::string saveExtFor(int type)
     }
 }
 
+// 只认真正的图片扩展名：名字里的点不等于扩展名。
+// "v1.2"、"img.webp-1" 这类末段不是扩展名，必须照常补后缀；
+// 否则会得到无扩展名的路径，保存直接失败、标签一直挂着"未保存"。
+inline bool isSaveExtSuffix(const std::string& tail)
+{
+    std::string e = tail;
+    for (auto& c : e) c = (char)std::tolower((unsigned char)c);
+    return e == "png" || e == "jpg" || e == "jpeg" || e == "webp" || e == "ora";
+}
+
+inline bool hasSaveExt(const std::string& base)
+{
+    const size_t dot = base.find_last_of('.');
+    if (dot == std::string::npos || dot == 0 || dot + 1 >= base.size()) return false;
+    return isSaveExtSuffix(base.substr(dot + 1));
+}
+
 inline std::string composeSavePath(const std::string& dir, const std::string& name, const std::string& ext)
 {
     std::string d = dir.empty() ? std::string(".") : dir;
@@ -24,8 +42,7 @@ inline std::string composeSavePath(const std::string& dir, const std::string& na
 
     const size_t sep = full.find_last_of("\\/");
     const std::string base = (sep == std::string::npos) ? full : full.substr(sep + 1);
-    const size_t dot = base.find_last_of('.');
-    if (dot == std::string::npos || dot == 0) full += ext;
+    if (!hasSaveExt(base)) full += ext;
 
     return full;
 }
@@ -39,9 +56,8 @@ inline std::string uniquePathName(const std::string& dir, const std::string& nam
 
     std::string base = name;
     const size_t sep = base.find_last_of("\\/");
-    const size_t dot = base.find_last_of('.');
-    if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
-        base = base.substr(0, dot);
+    const size_t start = (sep == std::string::npos) ? 0 : sep + 1;
+    if (hasSaveExt(base.substr(start))) base = base.substr(0, base.find_last_of('.'));
     const size_t dash = base.find_last_of('-');
     if (dash != std::string::npos) {
         bool tailDigits = dash + 1 < base.size();
