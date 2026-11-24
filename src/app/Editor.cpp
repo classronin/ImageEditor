@@ -560,23 +560,17 @@ void Editor::resizeCanvasAligned(int nw, int nh, int ax, int ay)
     if (mw_.active) cancelMeshWarp();
     ax = std::clamp(ax, 0, 2);
     ay = std::clamp(ay, 0, 2);
-    bool same = (nw == doc.width && nh == doc.height);
-    if (same) {
-        for (const auto& l : doc.layers) {
-            const int tx = (int)std::lround((double)(nw - l.img.width()) * (ax * 0.5));
-            const int ty = (int)std::lround((double)(nh - l.img.height()) * (ay * 0.5));
-            if (l.x != tx || l.y != ty) { same = false; break; }
-        }
-    }
-    if (same) {
-        return;
-    }
+    nw = std::max(1, nw);
+    nh = std::max(1, nh);
+    const int oldW = doc.width, oldH = doc.height;
+    if (nw == oldW && nh == oldH) return;
+    /* 画布大小只挪画布边：内容跟着旧画布走，按锚点算偏移量。
+       不能按「层图尺寸」重新对齐——裁切过的层图比画布大，
+       那样算会把内容整体推到右下，看着像回到了裁切前的位置。 */
+    const int dx = (int)std::lround((double)(nw - oldW) * (ax * 0.5));
+    const int dy = (int)std::lround((double)(nh - oldH) * (ay * 0.5));
     hist.record(doc, sel, "画布大小");
-    doc.resizeCanvas(nw, nh, 0, 0);
-    for (auto& l : doc.layers) {
-        l.x = (int)std::lround((double)(nw - l.img.width()) * (ax * 0.5));
-        l.y = (int)std::lround((double)(nh - l.img.height()) * (ay * 0.5));
-    }
+    doc.resizeCanvas(nw, nh, dx, dy);
     sel.reset(doc.width, doc.height);
     view.fit(doc.width, doc.height);
     afterEdit("画布尺寸已修改");

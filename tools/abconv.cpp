@@ -22,7 +22,7 @@ bool pickInput(std::string& path)
     char buf[MAX_PATH] = {0};
     OPENFILENAMEA ofn{};
     ofn.lStructSize = sizeof(ofn);
-    ofn.lpstrFilter = "图像文件\0*.png;*.jpg;*.jpeg;*.webp;*.tif;*.tiff;*.bmp\0所有文件\0*.*\0";
+    ofn.lpstrFilter = "图像文件\0*.png;*.jpg;*.jpeg;*.webp;*.gif;*.tif;*.tiff\0所有文件\0*.*\0";
     ofn.lpstrFile = buf;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;

@@ -1417,7 +1417,7 @@ void Host::openProjectFile()
     if (!dlg) return;
     dlg->setType(dlgs::FileDialog::Type::OpenFile);
     dlg->setTitle("打开图像");
-    for (const char* ext : {"png", "jpg", "jpeg", "bmp", "gif", "webp", "tif", "tiff", "ora"})
+    for (const char* ext : {"png", "jpg", "jpeg", "webp", "gif", "tif", "tiff", "ora"})
         dlg->addFilter(ext, ext);
     void* hwnd = window_->nativeHandle();
     if (dlg->show(hwnd) == dlgs::FileDialog::Result::OK) openFile(dlg->fileName());

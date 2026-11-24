@@ -5677,6 +5677,54 @@ int runSelfTest()
     }
     {
         ie::Host host;
+        host.ed().newDocument(100, 50, ie::Color(255, 255, 255, 255));
+        auto dlg = ie::ui::makeImageSizeDialog(host);
+        const int W = 640, H = 480;
+        dlg->place(ie::Rect{0, 0, W, H}, ie::Rect{0, 0, W, H});
+        const int px = 130, py = 145;
+        const float ctrlX = (float)(px + 16 + 120 + 40);
+        const float rowW = (float)(py + 44 + 8 + 15);
+        const float rowH2 = (float)(py + 44 + 8 + 30 + 15);
+        auto press = [&](float x, float y) {
+            ie::PointerEvent pe;
+            pe.pos = ie::Vec2f{x, y};
+            pe.pressed = true;
+            pe.down = true;
+            dlg->onPointer(pe);
+            pe.pressed = false;
+            dlg->onPointer(pe);
+        };
+        auto release = [&](float x, float y) {
+            ie::PointerEvent pe;
+            pe.pos = ie::Vec2f{x, y};
+            pe.pressed = false;
+            pe.down = false;
+            pe.released = true;
+            dlg->onPointer(pe);
+        };
+        auto typeDigits = [&](const char* s) {
+            for (const char* p = s; *p; ++p) {
+                ie::KeyEvent k;
+                k.scancode = 0;
+                k.unicode = (int)*p;
+                dlg->onKey(k);
+            }
+        };
+        press(ctrlX, rowW);
+        release(ctrlX, rowW);
+        typeDigits("150");
+        press(ctrlX, rowH2);
+        release(ctrlX, rowH2);
+        check(host.ed().doc.width == 100, "输入中: 还没按确定，图不动（提交只改框里的值）");
+        const float okX = (float)(px + 380 - 16 - 42), okY = (float)(py + 190 - 12 - 15);
+        press(okX, okY);
+        release(okX, okY);
+        check(host.ed().doc.width == 150,
+              "输入中: 点高度那一格时宽度当场提交（不用回车/确定），确定后 150 生效");
+        check(host.ed().doc.height == 75, "输入中: 宽度当场提交后高度也跟着比例联动");
+    }
+    {
+        ie::Host host;
         host.ed().newDocument(32, 32, ie::Color(200, 120, 60, 255));
         auto dlg = ie::ui::makeThresholdDialog(host);
         const int W = 640, H = 480;
@@ -5726,6 +5774,16 @@ int runSelfTest()
         e3.resizeCanvasAligned(200, 100, 0, 1);
         check(e3.doc.activeLayer()->x == 0 && e3.doc.activeLayer()->y == 25,
               "画布: 左中格 = 贴左、上下居中");
+
+        ie::Editor e4;
+        e4.newDocument(250, 250, ie::Color(255, 255, 255, 255));
+        e4.resizeCanvas(200, 200, -50, -50);
+        check(e4.doc.activeLayer()->x == -50 && e4.doc.activeLayer()->y == -50,
+              "画布: 裁切后层按 -50,-50 偏移，层图本身还是 250x250");
+        e4.resizeCanvasAligned(300, 300, 1, 1);
+        check(e4.doc.width == 300 && e4.doc.height == 300, "画布: 裁过的文档扩到 300x300");
+        check(e4.doc.activeLayer()->x == 0 && e4.doc.activeLayer()->y == 0,
+              "画布: 扩画布只挪画布边，内容跟着旧画布走（不按 250 图层重新居中，不会甩到右下）");
     }
 
     {

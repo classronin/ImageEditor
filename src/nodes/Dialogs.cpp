@@ -303,7 +303,16 @@ public:
             Row& r = rows_[(size_t)sess_.index];
             if (r.kind == RInt || r.kind == RNum) {
                 bindRowNum(r, sess_.index);
-                const bool handled = sess_.route(e, ctrlRect(rowRect(sess_.index)));
+                const Rect nb = ctrlRect(rowRect(sess_.index));
+                /* 点到别的格子或别处：正在输入的数字当场交掉，不丢。
+                   点回同一个框不算，留给它挪光标/选字。 */
+                if (e.pressed && num_.editing && !nb.contains((int)e.pos.x, (int)e.pos.y)) {
+                    num_.commit();
+                    sess_.clear();
+                    changed();
+                    markDirtyArea();
+                }
+                const bool handled = sess_.route(e, nb);
                 if (handled) {
                     changed();
                     markDirtyArea();
