@@ -16,9 +16,9 @@ inline std::string saveExtFor(int type)
     }
 }
 
-// 只认真正的图片扩展名：名字里的点不等于扩展名。
-// "v1.2"、"img.webp-1" 这类末段不是扩展名，必须照常补后缀；
-// 否则会得到无扩展名的路径，保存直接失败、标签一直挂着"未保存"。
+/* 只认真正的图片扩展名：名字里的点不等于扩展名。
+   "v1.2"、"img.webp-1" 这类末段不是扩展名，必须照常补后缀；
+   否则会得到无扩展名的路径，保存直接失败、标签一直挂着"未保存"。 */
 inline bool isSaveExtSuffix(const std::string& tail)
 {
     std::string e = tail;

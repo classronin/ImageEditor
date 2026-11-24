@@ -29,10 +29,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 #   laf：随仓库源码编译，Skia 后端
 # ---------------------------------------------------------------------------
 set(VCPKG_STATIC "E:/Programs/vcpkg/installed/x64-windows-static" CACHE PATH "vcpkg 静态 triplet 安装目录")
-set(VIPS_LOCAL "E:/lib/libvips-ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
+set(VIPS_LOCAL "E:/lib/libvips/libvips-ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
 set(SKIA_DIR "E:/lib/Skia/Skia-Windows-Release-x64" CACHE PATH "" FORCE)
-set(LAF_DIR "E:/source/laf" CACHE PATH "laf 源码目录")
-set(EIGEN_DIR "E:/source/eigen" CACHE PATH "eigen 头文件目录")
+set(LAF_DIR "E:/source/github.com/aseprite/laf" CACHE PATH "laf 源码目录")
+set(EIGEN_DIR "E:/source/gitlab.com/libeigen/eigen" CACHE PATH "eigen 头文件目录")
 
 list(APPEND CMAKE_PREFIX_PATH "${VCPKG_STATIC}")
 

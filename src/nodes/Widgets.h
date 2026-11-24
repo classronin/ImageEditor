@@ -68,6 +68,10 @@ struct NumField {
     double lo = 0.0, hi = 100.0, step = 1.0;
     const char* fmt = nullptr;
 
+    /* slide=true：拖动/单击条内位置都能改值（滑杆形态，带进度条）；
+       slide=false：只能点开输入，点一下直接进编辑，不画进度条（尺寸这类不该乱动的量用它）。 */
+    bool slide = true;
+
     bool drag = false, dragged = false;
     float pressX = 0.0f, pressY = 0.0f;
     bool editing = false;

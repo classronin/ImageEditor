@@ -588,6 +588,7 @@ protected:
         std::vector<std::string> items;
         double* num = nullptr;
         double nmin = 0, nmax = 100, nstep = 1;
+        bool nslide = true;
         std::string nfmt{"%.0f"};
         int h = kRowH;
     };
@@ -619,6 +620,7 @@ protected:
         num_.lo = r.nmin;
         num_.hi = r.nmax;
         num_.step = r.nstep;
+        num_.slide = r.nslide;
         num_.fmt = r.nfmt.c_str();
     }
     void beginRowNum(const Row& r, int idx)
@@ -697,6 +699,14 @@ protected:
         std::snprintf(fmt, sizeof(fmt), "%%.%df", prec > 0 ? prec : 0);
         r.nfmt = fmt;
         rows_.push_back(std::move(r));
+    }
+
+    /* 点击改数值：不画进度条、不能拖动，点一下直接进输入框。
+       尺寸这类一拖就毁面积的量用它，别给滑杆。 */
+    void addNumClick(std::string label, double* v, double mn, double mx, double step, int prec)
+    {
+        addNum(std::move(label), v, mn, mx, step, prec);
+        rows_.back().nslide = false;
     }
 
     void clearRows()
@@ -985,8 +995,8 @@ public:
     {
         w_ = h.ed().doc.width;
         h_ = h.ed().doc.height;
-        addNum("宽度", &w_, 1, 8192, 1, 0);
-        addNum("高度", &h_, 1, 8192, 1, 0);
+        addNumClick("宽度", &w_, 1, 8192, 1, 0);
+        addNumClick("高度", &h_, 1, 8192, 1, 0);
         extraH_ = 10 + 84 + 6;
         extraPaint_ = [this](SkCanvas& c, const Rect& r) { paintGrid(c, r); };
     }
@@ -1049,8 +1059,8 @@ public:
         h_ = baseH_ = h.ed().doc.height;
         lastW_ = baseW_;
         lastH_ = baseH_;
-        addNum("宽度", &w_, 1, 8192, 1, 0);
-        addNum("高度", &h_, 1, 8192, 1, 0);
+        addNumClick("宽度", &w_, 1, 8192, 1, 0);
+        addNumClick("高度", &h_, 1, 8192, 1, 0);
         addCheck("保持比例", &keep_);
     }
     void changed() override

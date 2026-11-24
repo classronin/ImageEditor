@@ -367,7 +367,7 @@ void NumField::paint(SkCanvas& c, const Rect& r, bool editingRow) const
     const ui::Theme& t = ui::theme();
     ui::fill(c, r, t.surface, 2.0f);
     ui::stroke(c, r, (editingRow && editing) ? t.accent : t.border, 1.0f, 2.0f);
-    if (!(editingRow && editing)) {
+    if (slide && !(editingRow && editing)) {
         const double span = hi - lo;
         double f = span > 0 ? (value() - lo) / span : 0.0;
         f = std::clamp(f, 0.0, 1.0);
@@ -455,7 +455,7 @@ bool NumField::pointer(const PointerEvent& e, const Rect& r)
             sel.caret = (int)buf.size();
             return true;
         }
-        if (e.doubleClick) {
+        if (!slide || e.doubleClick) {
             beginEdit();
             return true;
         }

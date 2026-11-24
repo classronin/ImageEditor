@@ -5641,13 +5641,6 @@ int runSelfTest()
             pe.pressed = false;
             dlg->onPointer(pe);
         };
-        auto dragTo = [&](float x, float y) {
-            ie::PointerEvent pe;
-            pe.pos = ie::Vec2f{x, y};
-            pe.pressed = false;
-            pe.down = true;
-            dlg->onPointer(pe);
-        };
         auto release = [&](float x, float y) {
             ie::PointerEvent pe;
             pe.pos = ie::Vec2f{x, y};
@@ -5657,14 +5650,27 @@ int runSelfTest()
             dlg->onPointer(pe);
         };
         press(ctrlX, rowY);
-        dragTo(ctrlX + 60.0f, rowY);
-        release(ctrlX + 60.0f, rowY);
+        release(ctrlX, rowY);
+        check(host.ed().doc.width == 100,
+              "图像大小: 点数值框不再当滑杆拖，值保持 100（点击只进输入）");
+        auto typeDigits = [&](const char* s) {
+            for (const char* p = s; *p; ++p) {
+                ie::KeyEvent k;
+                k.scancode = 0;
+                k.unicode = (int)*p;
+                dlg->onKey(k);
+            }
+        };
+        typeDigits("150");
+        ie::KeyEvent ent;
+        ent.scancode = ie::KeyEnter;
+        dlg->onKey(ent);
         const float okX = (float)(px + 380 - 16 - 42), okY = (float)(py + 190 - 12 - 15);
         press(okX, okY);
         release(okX, okY);
         const ie::Document& d = host.ed().doc;
         const int wAfter = d.width;
-        check(wAfter > 100, "图像大小: 拖宽度行 + 确定之后画布真的变宽了（拖之前先确认这一步没落空）");
+        check(wAfter == 150, "图像大小: 点开输入 150 + 确定之后画布宽度就是 150");
         check(d.height != 50, "图像大小: 保持比例时改宽度，高度不是原地不动");
         check(std::abs(d.height - (int)std::lround((double)wAfter * 50.0 / 100.0)) <= 1,
               "图像大小: 高度按原比例 100:50 算出来");
