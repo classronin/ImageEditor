@@ -26,11 +26,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 #     别的项目重装或改特性的 vcpkg libvips 影响不到本项目
 #   其余依赖（glib/jpeg/png/webp/tiff/lcms/opencv/hwy）：取自 vcpkg x64-windows-static，
 #     这些库不随 libvips 变动，无需冻结
-#   laf：随仓库源码编译，Skia 后端
+#   laf：随仓库源码编译，Skia 后端（源码不随包分发，见下方 URL）
 # ---------------------------------------------------------------------------
 set(VCPKG_STATIC "E:/Programs/vcpkg/installed/x64-windows-static" CACHE PATH "vcpkg 静态 triplet 安装目录")
 set(VIPS_LOCAL "E:/lib/libvips/libvips-ImageEditor" CACHE PATH "本项目私有的 libvips 副本（vips.lib + 头文件）")
 set(SKIA_DIR "E:/lib/Skia/Skia-Windows-Release-x64" CACHE PATH "" FORCE)
+# 第三方源码不进源码包，按需取回后放回下面两个目录：
+#   eigen  gitlab.com/libeigen/eigen
+#   laf    github.com/aseprite/laf
 set(LAF_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/laf" CACHE PATH "laf 源码目录（项目内副本）")
 set(EIGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen" CACHE PATH "eigen 头文件目录（项目内副本）")
 
