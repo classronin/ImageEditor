@@ -113,6 +113,7 @@ add_executable(ImageEditor WIN32
     src/core/Transform.cpp
     src/core/ImageIo.cpp
     src/core/Ora.cpp
+    src/core/ClassRonin_QRData.cpp
     src/app/Editor.cpp
     src/app/LocalWarpEdit.cpp
     src/tools/Tool.cpp

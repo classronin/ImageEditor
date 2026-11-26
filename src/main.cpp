@@ -10,6 +10,7 @@
 #include "core/Ora.h"
 #include "core/ShadowLift.h"
 #include "core/Primaries.h"
+#include "core/ClassRonin_QRData.h"
 #include "tools/Paint.h"
 #include "tools/Tools.h"
 #include "app/Editor.h"
@@ -2596,6 +2597,75 @@ int runSelfTest()
 
         check(ed.sel.contains(20, 20) && !ed.sel.contains(35, 35),
               "lasso: 多边形形态点击锁点 + Delete 退点 + 双击闭合");
+    }
+    {
+        ie::Editor ed;
+        ed.newDocument(64, 64, ie::Color(255, 255, 255, 255));
+        ed.sel.reset(ed.doc.width, ed.doc.height);
+        ed.view.zoom = 1.0f;
+        ed.view.panX = ed.view.panY = 0.0f;
+        ed.view.vpX = ed.view.vpY = 0.0f;
+        ed.view.vpW = (float)ed.doc.width;
+        ed.view.vpH = (float)ed.doc.height;
+        auto tool = ie::makeLassoTool();
+        tool->onEnter(ed);
+
+        ie::InputFrame in;
+        in.mouse = ie::Vec2f(10, 10);
+        in.pressed[0] = true;
+        tool->onPress(ed, in, 0);
+        in.pressed[0] = false;
+        in.released[0] = true;
+        tool->onRelease(ed, in, 0);
+        in.released[0] = false;
+
+        auto probe = [&](bool shift, float mx, float my, float& maxX, float& maxY) {
+            ie::OverlayRecording rec;
+            ie::OverlayRecorder r(&rec);
+            in.mouse = ie::Vec2f(mx, my);
+            in.shift = shift;
+            tool->overlay(&r, ed, ed.view, in);
+            maxX = -1e9f;
+            maxY = -1e9f;
+            for (const auto& op : rec.ops) {
+                if (op.kind != ie::OvKind::Line) continue;
+                maxX = std::max(maxX, std::max(op.x0, op.x1));
+                maxY = std::max(maxY, std::max(op.y0, op.y1));
+            }
+        };
+
+        float fx = 0, fy = 0;
+        probe(false, 40, 25, fx, fy);
+        check(std::fabs(fy - 25.0f) < 0.6f && std::fabs(fx - 40.0f) < 0.6f,
+              "lasso: 不按 Shift 时预览线跟手，鼠标到 40,25 线就到 40,25");
+
+        float sx = 0, sy = 0;
+        probe(true, 40, 25, sx, sy);
+        check(std::fabs(sy - 26.77f) < 0.6f && std::fabs(sx - 39.05f) < 0.6f,
+              "lasso: 按住 Shift 时预览线当场掰到 30°（还没点落点就已经是 15° 档上的一条，长度不变）");
+
+        in.mouse = ie::Vec2f(40, 25);
+        in.shift = true;
+        in.pressed[0] = true;
+        tool->onPress(ed, in, 0);
+        in.pressed[0] = false;
+        in.released[0] = true;
+        tool->onRelease(ed, in, 0);
+        in.released[0] = false;
+
+        probe(false, 20, 60, sx, sy);
+        bool baseSnapped = false;
+        {
+            ie::OverlayRecording rec;
+            ie::OverlayRecorder r(&rec);
+            in.shift = true;
+            tool->overlay(&r, ed, ed.view, in);
+            for (const auto& op : rec.ops) {
+                if (op.kind != ie::OvKind::Line) continue;
+                if (std::fabs(op.y0 - 26.77f) < 0.6f && std::fabs(op.x0 - 39.05f) < 0.6f) baseSnapped = true;
+            }
+        }
+        check(baseSnapped, "lasso: 点下去那一下也落在同一条 15° 线上（39.05,26.77，不是 40,25）");
     }
 
     {
@@ -5795,10 +5865,18 @@ int runSelfTest()
         }
         check(hasAbout && !hasHelp, "菜单: 顶层最后一项是「作者」，没有「帮助」");
         check(!titles.empty() && titles.back() == "作者", "菜单: 「作者」在最右");
+        std::vector<uint8_t> qr;
+        check(ClassRonin::QRCode::Decode(qr, ClassRonin::QRCode::PixelFormat::Rgba32),
+              "作者: 内嵌二维码的 RLE 解得出来");
+        check(qr.size() == (size_t)ClassRonin::QRCode::Width * (size_t)ClassRonin::QRCode::Height * 4u,
+              "作者: 二维码解出 200×200 RGBA");
+        check(qr.size() >= 4 && qr[0] == 255 && qr[1] == 255 && qr[2] == 255 && qr[3] == 255,
+              "作者: 二维码左上角是白底、alpha 不透明");
         ie::Host host;
         auto dlg = ie::ui::makeAboutDialog(host);
         const ie::Size s = dlg->requestSize();
-        check(s.h >= 200 + 44, "关于: 面板高度容得下 200×200 的图（底部不再留按钮条）");
+        check(s.w == 232, "作者: 面板宽 232，内容区就是 200");
+        check(s.h >= 200 + 44, "作者: 面板高度容得下 200×200 的二维码，底部不留按钮条");
         const int W = 640, H = 480;
         dlg->place(ie::Rect{0, 0, W, H}, ie::Rect{0, 0, W, H});
         std::vector<uint32_t> pix((size_t)W * H, 0);
@@ -5810,6 +5888,38 @@ int runSelfTest()
         }
         const ie::Rect panel = dlg->requestSize().w ? ie::Rect{0, 0, W, H} : ie::Rect{0, 0, W, H};
         (void)panel;
+        if (can) {
+            /* 版面：面板居中，内容区 = 面板左内边 16、标题条 12 */
+            const int px0 = (W - s.w) / 2 + 16;
+            const int py0 = (H - s.h) / 2 + 12;
+            const int iy = py0 + 54;
+            const int probes[][2] = {{10, 10}, {60, 60}, {100, 100}, {150, 40}, {190, 190}, {20, 180}};
+            int mism = 0;
+            for (const auto& p : probes) {
+                const size_t si = ((size_t)p[1] * 200u + (size_t)p[0]) * 4u;
+                const uint32_t got = pix[(size_t)(iy + p[1]) * (size_t)W + (size_t)(px0 + p[0])];
+                const int r = (int)((got >> 16) & 0xFF), g = (int)((got >> 8) & 0xFF), b = (int)(got & 0xFF);
+                if (std::abs(r - (int)qr[si]) > 2 || std::abs(g - (int)qr[si + 1]) > 2 ||
+                    std::abs(b - (int)qr[si + 2]) > 2)
+                    ++mism;
+            }
+            check(mism == 0, "作者: 面板上的二维码与解出来的像素逐点一致（不是占位框、没缩放没滤波）");
+            int orange = 0, white = 0;
+            for (int y = py0 + 2; y < py0 + 20; ++y)
+                for (int x = px0; x < px0 + 200; ++x) {
+                    const uint32_t v = pix[(size_t)y * (size_t)W + (size_t)x];
+                    const int r = (int)((v >> 16) & 0xFF), g = (int)((v >> 8) & 0xFF), b = (int)(v & 0xFF);
+                    if (r > 200 && g > 100 && g < 190 && b < 120) ++orange;
+                }
+            for (int y = py0 + 24; y < py0 + 44; ++y)
+                for (int x = px0; x < px0 + 200; ++x) {
+                    const uint32_t v = pix[(size_t)y * (size_t)W + (size_t)x];
+                    const int r = (int)((v >> 16) & 0xFF), g = (int)((v >> 8) & 0xFF), b = (int)(v & 0xFF);
+                    if (r > 240 && g > 240 && b > 240) ++white;
+                }
+            check(orange > 12, "作者: ClassRonin 是橙色画出来的");
+            check(white > 12, "作者: 请我喝杯咖啡 是白色画出来的");
+        }
     }
 
     {

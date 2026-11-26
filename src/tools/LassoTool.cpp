@@ -10,6 +10,18 @@ namespace {
 
 constexpr float kPi = 3.14159265358979f;
 
+/* 把「上一个锚点 → 落点」掰到最近的 15° 倍数上（0/15/30/45/60/75/90…），长度不变。
+   15° 网格比 45° 细，正八边形、正十二边形、斜 30° 的线都画得出来，也涵盖 45°。
+   落点锁位和跟随鼠标的预览线共用这一个函数，两边不会算出两种结果。 */
+static Vec2f snapBearing15(const Vec2f& a, const Vec2f& p)
+{
+    const float step = kPi / 12.0f;
+    const float ang = std::atan2(p.y - a.y, p.x - a.x);
+    const float snapped = std::round(ang / step) * step;
+    const float len = std::hypot(p.x - a.x, p.y - a.y);
+    return Vec2f{a.x + std::cos(snapped) * len, a.y + std::sin(snapped) * len};
+}
+
 static void antsPolyline(Overlay* dl, const std::vector<Vec2f>& pts, const CanvasViewState& v, int W, int H,
                          float phase, Color32 col)
 {
@@ -107,12 +119,13 @@ public:
         if (!drawing_ || pts_.empty()) return;
         const int W = e.doc.width, H = e.doc.height;
         const float phase = 0.0f;
-        const Vec2f cur = e.canvasImage(in.mouse.x, in.mouse.y);
+        const Vec2f raw = e.canvasImage(in.mouse.x, in.mouse.y);
+        const Vec2f cur = in.shift ? snapBearing15(pts_.back(), raw) : raw;
 
         antsPolyline(dl, pts_, v, W, H, phase, IE_COL32(255, 255, 255, 230));
         std::vector<Vec2f> tail = {pts_.back(), cur};
         antsPolyline(dl, tail, v, W, H, phase, IE_COL32(255, 255, 255, 230));
-        if (!nearStart(cur)) {
+        if (!nearStart(raw)) {
             std::vector<Vec2f> close = {cur, pts_.front()};
             antsPolyline(dl, close, v, W, H, phase, IE_COL32(255, 255, 255, 90));
         }
@@ -138,14 +151,7 @@ private:
 
     void addAnchor(Editor& e, Vec2f p, bool shift45)
     {
-        if (shift45 && !pts_.empty()) {
-            const Vec2f& a = pts_.back();
-            const float ang = std::atan2(p.y - a.y, p.x - a.x);
-            const float snapped = std::round(ang / (kPi / 4.0f)) * (kPi / 4.0f);
-            const float len = std::hypot(p.x - a.x, p.y - a.y);
-            p.x = a.x + std::cos(snapped) * len;
-            p.y = a.y + std::sin(snapped) * len;
-        }
+        if (shift45 && !pts_.empty()) p = snapBearing15(pts_.back(), p);
         pts_.push_back(p);
     }
 

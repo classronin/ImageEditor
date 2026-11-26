@@ -4,7 +4,7 @@
 #include "app/Editor.h"
 #include "app/SavePath.h"
 #include "core/ImageIo.h"
-#include "nodes/AboutImg.h"
+#include "core/ClassRonin_QRData.h"
 #include "core/LayerStyle.h"
 #include "core/ShadowLift.h"
 #include "host/Host.h"
@@ -1336,7 +1336,7 @@ public:
     {
         noFooter_ = true;
         showCancel_ = false;
-        extraH_ = 22 + 22 + 10 + 200 + 10;
+        extraH_ = 22 + 22 + 10 + kImgSide + 10;
         loadImage();
         extraPaint_ = [this](SkCanvas& c, const Rect& r) { paintContent(c, r); };
     }
@@ -1346,65 +1346,40 @@ private:
 
     sk_sp<SkImage> img_;
 
-    static bool b64decode(const std::string& in, std::vector<uint8_t>& out)
-    {
-        auto val = [](char ch) -> int {
-            if (ch >= 'A' && ch <= 'Z') return ch - 'A';
-            if (ch >= 'a' && ch <= 'z') return ch - 'a' + 26;
-            if (ch >= '0' && ch <= '9') return ch - '0' + 52;
-            if (ch == '+') return 62;
-            if (ch == '/') return 63;
-            return -1;
-        };
-        out.clear();
-        out.reserve(in.size() * 3 / 4 + 4);
-        int acc = 0, bits = 0;
-        for (char ch : in) {
-            if (ch == '\n' || ch == '\r') continue;
-            if (ch == '=') break;
-            const int v = val(ch);
-            if (v < 0) return false;
-            acc = (acc << 6) | v;
-            bits += 6;
-            if (bits >= 8) {
-                bits -= 8;
-                out.push_back((uint8_t)((acc >> bits) & 0xFF));
-            }
-        }
-        return !out.empty();
-    }
-
     void loadImage()
     {
-        std::vector<uint8_t> bytes;
-        if (!b64decode(aboutimg::base64(), bytes)) return;
-        ie::Image img;
-        if (!ie::imageio::decode(bytes, img) || img.empty()) return;
-        const size_t n = (size_t)img.width() * (size_t)img.height() * 4;
-        auto data = SkData::MakeWithCopy(img.data(), n);
+        std::vector<uint8_t> px;
+        if (!ClassRonin::QRCode::Decode(px, ClassRonin::QRCode::PixelFormat::Rgba32)) return;
+        const size_t need =
+            (size_t)ClassRonin::QRCode::Width * (size_t)ClassRonin::QRCode::Height * 4u;
+        if (px.size() < need) return;
+        auto data = SkData::MakeWithCopy(px.data(), need);
         img_ = SkImages::RasterFromData(
-            SkImageInfo::Make(img.width(), img.height(), kRGBA_8888_SkColorType, kUnpremul_SkAlphaType), data,
-            (size_t)img.width() * 4);
+            SkImageInfo::Make(ClassRonin::QRCode::Width, ClassRonin::QRCode::Height,
+                              kRGBA_8888_SkColorType, kOpaque_SkAlphaType),
+            data, (size_t)ClassRonin::QRCode::Width * 4u);
     }
 
     void paintContent(SkCanvas& c, const Rect& r) const
     {
         const Theme& t = theme();
+        const Color32 brandCol = rgba(255, 138, 61);
+        const Color32 lineCol = rgba(255, 255, 255);
+        const int box = kImgSide;
+        const int bx = r.x + (r.w - box) / 2;
         const char* brand = "ClassRonin";
-        drawText(c, (float)(r.x + (r.w - (int)textWidth(brand)) / 2), (float)(r.y + 2), t.accent, brand);
+        drawText(c, (float)(bx + (box - (int)textWidth(brand)) / 2), (float)(r.y + 2), brandCol, brand);
         const char* line = "请我喝杯咖啡";
-        drawText(c, (float)(r.x + (r.w - (int)textWidth(line)) / 2), (float)(r.y + 24), t.text, line);
-        const int x = r.x + (r.w - kImgSide) / 2, y = r.y + 22 + 22 + 10;
+        drawText(c, (float)(bx + (box - (int)textWidth(line)) / 2), (float)(r.y + 24), lineCol, line);
+        const int x = bx, y = r.y + 22 + 22 + 10;
         const SkRect dst = SkRect::MakeXYWH((float)x, (float)y, (float)kImgSide, (float)kImgSide);
         if (img_) {
             c.drawImageRect(img_.get(), SkRect::MakeWH((float)img_->width(), (float)img_->height()), dst,
-                            SkSamplingOptions(SkFilterMode::kLinear), nullptr,
+                            SkSamplingOptions(SkFilterMode::kNearest), nullptr,
                             SkCanvas::kFast_SrcRectConstraint);
         } else {
             fill(c, Rect{x, y, kImgSide, kImgSide}, t.surface, 3.0f);
             stroke(c, Rect{x, y, kImgSide, kImgSide}, t.border, 1.0f, 3.0f);
-            drawText(c, (float)(x + (kImgSide - (int)textWidth("img/img.png")) / 2), (float)(y + 90), t.dim,
-                     "img/img.png");
         }
     }
 };
